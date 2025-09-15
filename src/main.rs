@@ -3,10 +3,8 @@ mod rigid_body;
 
 use crate::physics_engine::PhysicsEngine;
 use crate::rigid_body::RigidBody;
-use ggez::event::{EventHandler, MouseButton};
-use ggez::graphics::{self, Color, DrawMode, MeshBuilder};
-use ggez::mint::Point2;
-use ggez::{event, Context, ContextBuilder, GameResult};
+use macroquad::prelude::*;
+use macroquad::ui::{self, hash, root_ui}; // Import the UI module and hash! macro
 use nalgebra::Vector2;
 
 struct MainState {
@@ -14,156 +12,129 @@ struct MainState {
     is_mouse_held: bool,
     start_point: Vector2<f32>,
     end_point: Vector2<f32>,
+    radius: f32,
+    mass: f32,
 }
 
 impl MainState {
-    pub fn new() -> GameResult<MainState> {
-        let mut physics_engine = PhysicsEngine::new(Vector2::new(0.0, 980.0)); // Gravity downwards
+    pub fn new() -> Self {
+        let physics_engine = PhysicsEngine::new(Vector2::new(0.0, 2000.0)); // Gravity downwards
 
-        // Add some rigid bodies
-        //physics_engine.add_body(RigidBody::new(1.0, Vector2::new(400.0, 100.0), false, None));
-        //physics_engine.add_body(RigidBody::new(1.0, Vector2::new(400.0, 300.0), false, None));
-        //physics_engine.add_body(RigidBody::new(0.0, Vector2::new(400.0, 300.0), true, None)); // Static ground body
-
-        Ok(MainState {
+        MainState {
             physics_engine,
             is_mouse_held: false,
             start_point: Vector2::new(0.0, 0.0),
             end_point: Vector2::new(0.0, 0.0),
-        })
+            radius: 10.0, // Default radius
+            mass: 1.0,    // Default mass
+        }
     }
-}
 
-impl EventHandler for MainState {
-    fn update(&mut self, _ctx: &mut Context) -> GameResult<()> {
-        let dt = 1.0 / 60.0; // Fixed time step
+    pub fn update(&mut self) {
+        let dt = get_frame_time();
         self.physics_engine.update(dt);
-        Ok(())
-    }
 
-    fn draw(&mut self, ctx: &mut Context) -> GameResult<()> {
-        graphics::clear(ctx, Color::BLACK);
-
-        let mut mesh_builder = MeshBuilder::new();
-        for body in self.physics_engine.bodies() {
-            let _ = mesh_builder.circle(
-                DrawMode::fill(),
-                Point2 {
-                    x: body.position.x,
-                    y: body.position.y,
-                }, // Explicitly construct Point2
-                10.0,
-                0.1,
-                Color::WHITE,
-            );
-        }
-
+        // Handle mouse input
         if self.is_mouse_held {
-            let _ = mesh_builder.line(
-                &[
-                    Point2 {
-                        x: self.start_point.x,
-                        y: self.start_point.y,
-                    },
-                    Point2 {
-                        x: self.start_point.x + (self.start_point.x - self.end_point.x),
-                        y: self.start_point.y + (self.start_point.y - self.end_point.y),
-                    },
-                ],
-                5.0,
-                Color::WHITE,
-            );
-        }
+            if is_mouse_button_down(MouseButton::Left) {
+                let mouse_pos = mouse_position();
+                self.end_point = Vector2::new(mouse_pos.0, mouse_pos.1);
+            } else {
+                self.is_mouse_held = false;
+                self.physics_engine.delete_starting_pos();
 
-        if !self.physics_engine.bodies().is_empty() || self.is_mouse_held {
-            let mesh = mesh_builder.build(ctx)?;
-            graphics::draw(ctx, &mesh, graphics::DrawParam::default())?;
-        }
+                let starting_velocity = Vector2::new(
+                    5.0 * (self.start_point.x - self.end_point.x),
+                    5.0 * (self.start_point.y - self.end_point.y),
+                );
 
-        graphics::present(ctx)?;
-        Ok(())
-    }
-
-    fn mouse_motion_event(&mut self, _ctx: &mut Context, _x: f32, _y: f32, _dx: f32, _dy: f32) {
-        if self.is_mouse_held {
-            self.end_point.x = _x;
-            self.end_point.y = _y;
-        }
-    }
-
-    fn mouse_button_down_event(
-        &mut self,
-        _ctx: &mut Context,
-        _button: MouseButton,
-        _x: f32,
-        _y: f32,
-    ) {
-        match _button {
-            MouseButton::Left => {
-                self.is_mouse_held = true; // Track the mouse hold
-                self.start_point.x = _x;
-                self.start_point.y = _y;
-                self.end_point.x = _x;
-                self.end_point.y = _y;
-
-                self.physics_engine.create_starting_pos(RigidBody::new(
-                    0.0,
-                    Vector2::new(_x, _y),
-                    true,
-                    None,
-                    10.0, // radius (added fifth argument)
+                self.physics_engine.add_body(RigidBody::new(
+                    self.mass,
+                    self.start_point,
+                    false,
+                    Some(starting_velocity),
+                    self.radius,
                 ));
-                //println!("Mouse button pressed");
             }
-            _ => {
-                println!("Other button is clicked");
-            }
-        }
-    }
+        } else {
+            if is_mouse_button_pressed(MouseButton::Left) {
+                let mouse_pos = mouse_position();
+                // Check if the mouse is within the slider area
+                if mouse_pos.1 > 150.0 {
+                    // Adjust this value based on slider height
+                    self.is_mouse_held = true;
+                    self.start_point = Vector2::new(mouse_pos.0, mouse_pos.1);
+                    self.end_point = self.start_point;
 
-    fn mouse_button_up_event(
-        &mut self,
-        _ctx: &mut Context,
-        _button: MouseButton,
-        _x: f32,
-        _y: f32,
-    ) {
-        match _button {
-            MouseButton::Left => {
-                if self.is_mouse_held {
-                    self.is_mouse_held = false; // Reset the hold state on release
-                    self.end_point.x = _x;
-                    self.end_point.y = _y;
-
-                    self.physics_engine.delete_starting_pos(); // Deletes the starting point for the object created
-
-                    let starting_velocity = Vector2::new(
-                        5.0 * (self.start_point.x - self.end_point.x),
-                        5.0 * (self.start_point.y - self.end_point.y),
-                    );
-
-                    self.physics_engine.add_body(RigidBody::new(
-                        1.0,
-                        Vector2::new(self.start_point.x, self.start_point.y),
-                        false,
-                        Some(starting_velocity),
-                        10.0, // radius (added fifth argument)
+                    self.physics_engine.create_starting_pos(RigidBody::new(
+                        0.0,
+                        self.start_point,
+                        true,
+                        None,
+                        self.radius,
                     ));
-                    //println!("Mouse button released");
                 }
             }
-            _ => {
-                println!("Other button released");
-            }
         }
+
+        // Update sliders
+        root_ui().label(None, "Adjust Radius and Mass:");
+        root_ui().slider(hash!(), "Radius", 1.0..100.0, &mut self.radius);
+        root_ui().slider(hash!(), "Mass", 0.1..10.0, &mut self.mass);
+    }
+
+    pub fn draw(&self) {
+        clear_background(BLACK);
+
+        // Draw sliders at the top (display only, no mutable borrow)
+        root_ui().label(None, "Adjust Radius and Mass:");
+        // Sliders are now only in update(), so just show the values here
+
+        // Draw bodies
+        for body in self.physics_engine.bodies() {
+            draw_circle(body.position.x, body.position.y, body.radius, WHITE);
+        }
+
+        // Draw aiming line when holding mouse
+        if self.is_mouse_held {
+            draw_line(
+                self.start_point.x,
+                self.start_point.y,
+                self.start_point.x + (self.start_point.x - self.end_point.x),
+                self.start_point.y + (self.start_point.y - self.end_point.y),
+                5.0,
+                WHITE,
+            );
+        }
+
+        // Show hint text until the first dynamic (non-static) object exists
+        let has_dynamic = self.physics_engine.bodies().iter().any(|b| !b.is_static);
+
+        if !has_dynamic {
+            let hint = "Drag to generate object";
+            let font_size = 30;
+            let dims = measure_text(hint, None, font_size, 1.0);
+            let x = (screen_width() - dims.width) / 2.0;
+            let y = screen_height() / 2.0;
+            draw_text(hint, x, y, font_size as f32, WHITE);
+        }
+
+        // Draw radius and mass text
+        let radius_text = format!("Radius: {:.1}", self.radius);
+        draw_text(&radius_text, 10.0, 80.0, 20.0, WHITE);
+
+        let mass_text = format!("Mass: {:.1}", self.mass);
+        draw_text(&mass_text, 10.0, 120.0, 20.0, WHITE);
     }
 }
 
-fn main() -> GameResult {
-    let (ctx, event_loop) = ContextBuilder::new("my_physics_engine", "George")
-        .build()
-        .expect("Failed to create ggez context");
+#[macroquad::main("Physics Engine")]
+async fn main() {
+    let mut state = MainState::new();
 
-    let state = MainState::new()?;
-    event::run(ctx, event_loop, state) // Pass without mutable references
+    loop {
+        state.update();
+        state.draw();
+        next_frame().await;
+    }
 }

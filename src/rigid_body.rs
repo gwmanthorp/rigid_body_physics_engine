@@ -33,6 +33,11 @@ impl RigidBody {
 
     pub fn update(&mut self, dt: f32) {
         if !self.is_static {
+            if self.mass == 0.0 {
+                // treat zero-mass as static/infinite mass: clear forces and do nothing
+                self.force = Vector2::new(0.0, 0.0);
+                return;
+            }
             let acceleration = self.force / self.mass;
             self.velocity += acceleration * dt;
             self.position += self.velocity * dt;
@@ -47,40 +52,66 @@ impl RigidBody {
     }
 
     pub fn resolve_collision(&mut self, other: &mut RigidBody) {
-        // More realistic collision response
-        let normal = (other.position - self.position).normalize();
-        // Correctly calculate relative velocity
+        // More robust collision response using inverse mass to avoid division by zero
+        let delta = other.position - self.position;
+        let distance = delta.norm();
+        if distance == 0.0 {
+            return; // overlapping exactly; skip to avoid NaNs
+        }
+        let normal = delta / distance;
+
+        // Relative velocity along the normal
         let relative_velocity = other.velocity - self.velocity;
         let speed = relative_velocity.dot(&normal);
 
         if speed >= 0.0 {
-            return; // They are moving apart or touching perfectly still
+            return; // moving apart or stationary along normal
         }
 
-        // Prevent overlap
-        let distance = (self.position - other.position).norm();
+        // Positional correction (minimum translation vector) using inverse mass
         let overlap = (self.radius + other.radius) - distance;
         if overlap > 0.0 {
-            let mtv = normal * overlap; // Minimum translation vector
-            let total_mass = self.mass + other.mass;
-            // Distribute push-out based on mass
-            if !self.is_static {
-                self.position -= mtv * (other.mass / total_mass);
-            }
-            if !other.is_static {
-                other.position += mtv * (self.mass / total_mass);
+            let inv_mass_self = if self.is_static { 0.0 } else { 1.0 / self.mass };
+            let inv_mass_other = if other.is_static {
+                0.0
+            } else {
+                1.0 / other.mass
+            };
+            let inv_total = inv_mass_self + inv_mass_other;
+
+            if inv_total > 0.0 {
+                // small slop/bias to avoid jitter
+                let percent = 0.8;
+                let correction = normal * (overlap / inv_total) * percent;
+                if !self.is_static {
+                    self.position -= correction * inv_mass_self;
+                }
+                if !other.is_static {
+                    other.position += correction * inv_mass_other;
+                }
             }
         }
 
-        // Elastic collision response
-        let e = 0.3; // Coefficient of restitution
-        let j = -(1.0 + e) * speed / (1.0 / self.mass + 1.0 / other.mass);
+        // Elastic collision impulse using inverse mass, avoid 1/mass when mass == 0
+        let e = 0.3; // coefficient of restitution
+        let inv_mass_self = if self.is_static { 0.0 } else { 1.0 / self.mass };
+        let inv_mass_other = if other.is_static {
+            0.0
+        } else {
+            1.0 / other.mass
+        };
+        let inv_total = inv_mass_self + inv_mass_other;
+        if inv_total == 0.0 {
+            return; // both static or infinite mass - nothing to do
+        }
+
+        let j = -(1.0 + e) * speed / inv_total;
 
         if !self.is_static {
-            self.velocity -= j / self.mass * normal;
+            self.velocity -= normal * (j * inv_mass_self);
         }
         if !other.is_static {
-            other.velocity += j / other.mass * normal;
+            other.velocity += normal * (j * inv_mass_other);
         }
     }
 }

@@ -4,5 +4,5 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-ggez = "0.7"
-nalgebra = "0.30"  # For vector math
+macroquad = "0.4"
+nalgebra = "0.32"

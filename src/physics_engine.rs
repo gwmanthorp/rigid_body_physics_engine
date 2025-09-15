@@ -1,8 +1,6 @@
 use crate::rigid_body::RigidBody;
+use macroquad::window::{screen_height, screen_width};
 use nalgebra::Vector2;
-
-const WINDOW_WIDTH: f32 = 800.0; // Set to your actual window width
-const WINDOW_HEIGHT: f32 = 600.0; // Set to your actual window height
 
 const DAMPENING_FACTOR: f32 = 0.8;
 const FRICTION_FACTOR: f32 = 0.98;
@@ -36,26 +34,27 @@ impl PhysicsEngine {
         self.handle_collisions();
         for body in &mut self.bodies {
             if !body.is_static {
-                // Apply gravity
-                body.velocity += self.gravity * dt;
+                // Treat `self.gravity` as acceleration (g). Convert to force F = m * g
+                // so acceleration becomes g regardless of mass.
+                body.apply_force(self.gravity * body.mass);
 
-                // Update position
-                body.position += body.velocity * dt;
+                // Let RigidBody integrate velocity & position (and clear forces)
+                body.update(dt);
 
-                // Collision detection with window boundaries
+                // Collision detection with window boundaries (same response)
                 if body.position.x - body.radius < 0.0 {
                     body.position.x = body.radius;
                     body.velocity.x = -body.velocity.x * DAMPENING_FACTOR;
-                } else if body.position.x + body.radius > WINDOW_WIDTH {
-                    body.position.x = WINDOW_WIDTH - body.radius;
+                } else if body.position.x + body.radius > screen_width() {
+                    body.position.x = screen_width() - body.radius;
                     body.velocity.x = -body.velocity.x * DAMPENING_FACTOR;
                 }
 
                 if body.position.y - body.radius < 0.0 {
                     body.position.y = body.radius;
                     body.velocity.y = -body.velocity.y * DAMPENING_FACTOR;
-                } else if body.position.y + body.radius > WINDOW_HEIGHT {
-                    body.position.y = WINDOW_HEIGHT - body.radius;
+                } else if body.position.y + body.radius > screen_height() {
+                    body.position.y = screen_height() - body.radius;
                     body.velocity.y = -body.velocity.y * DAMPENING_FACTOR;
                     body.velocity.x *= FRICTION_FACTOR;
                 }
