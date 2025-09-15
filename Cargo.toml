@@ -1,0 +1,8 @@
+[package]
+name = "my_physics_engine"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+ggez = "0.7"
+nalgebra = "0.30"  # For vector math
