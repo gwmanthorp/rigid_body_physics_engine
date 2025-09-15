@@ -2,7 +2,7 @@
 
 [A 2D Physics Engine](https://gwmanthorp.github.io/rigid_body_physics_engine/)
 
-This project is a simple 2D rigid body physics engine built from scratch using Rust. It uses the ggez game engine for rendering and the nalgebra library for vector mathematics. Watch circles collide, bounce, and respond to gravity in a fun, interactive simulation!
+This project is a simple 2D rigid body physics engine built from scratch using Rust. It uses the macroquad game engine for rendering and the nalgebra library for vector mathematics. Watch circles collide, bounce, and respond to gravity in a fun, interactive simulation!
 
 # 🎯 Overview
 
@@ -16,7 +16,7 @@ The goal of this project was to build a basic physics simulation from the ground
 - Collision Detection & Response: Implements circle-to-circle collision detection and a realistic elastic collision response using a coefficient of restitution to handle bounces.
 - Boundary Constraints: Objects realistically bounce off the window's edges with configurable damping and friction.
 - Built with Rust: Leverages the performance and safety of the Rust programming language. 🦀
-- ggez for Rendering: Utilizes the ggez 2D game framework for drawing objects, handling the game loop, and processing user input.
+- Macroquad for Rendering: Utilizes the macroquad 2D game framework for drawing objects, handling the game loop, and processing user input.
 
 # 🚀 How to Run
 
@@ -56,6 +56,6 @@ rusty-physics-fun/
 │   ├── main.rs             # Main application loop, rendering, and user input
 │   ├── physics_engine.rs   # Manages all physics objects and the simulation loop
 │   └── rigid_body.rs       # Defines the RigidBody struct and its logic
-├── Cargo.toml              # Project dependencies (ggez, nalgebra)
+├── Cargo.toml              # Project dependencies (macroquad, nalgebra)
 └── README.md               # This file
 ```
