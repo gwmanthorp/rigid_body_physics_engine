@@ -19,6 +19,8 @@ The goal of this project was to build a basic physics simulation from the ground
 - Macroquad for Rendering: Utilizes the macroquad 2D game framework for drawing objects, handling the game loop, and processing user input.
 
 # 🚀 How to Run
+## Interactive demo (recommended)
+The packaged WASM available as a live demo can be found [here](https://gwmanthorp.github.io/rigid_body_physics_engine/)
 
 ## Prerequisites
 
