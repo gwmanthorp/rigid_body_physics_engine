@@ -1,6 +1,6 @@
 # PhysicsEngine — 2D Rigid Body Physics Engine (Rust)
 
-A 2D Physics Engine
+[A 2D Physics Engine](https://gwmanthorp.github.io/rigid_body_physics_engine/)
 
 This project is a simple 2D rigid body physics engine built from scratch using Rust. It uses the ggez game engine for rendering and the nalgebra library for vector mathematics. Watch circles collide, bounce, and respond to gravity in a fun, interactive simulation!
 
